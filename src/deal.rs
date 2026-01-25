@@ -91,6 +91,21 @@ impl Deal {
     pub fn partnership_hcp(&self, direction: Direction) -> u8 {
         self.hand(direction).hcp() + self.hand(direction.partner()).hcp()
     }
+
+    /// Returns the total number of cards in the deal
+    pub fn total_cards(&self) -> usize {
+        self.north.len() + self.east.len() + self.south.len() + self.west.len()
+    }
+
+    /// Returns true if the deal has any cards (not empty/placeholder)
+    pub fn has_cards(&self) -> bool {
+        self.total_cards() > 0
+    }
+
+    /// Returns true if the deal is complete (52 cards total)
+    pub fn is_complete(&self) -> bool {
+        self.total_cards() == 52
+    }
 }
 
 #[cfg(test)]
@@ -127,5 +142,24 @@ mod tests {
 
         assert_eq!(deal.partnership_hcp(Direction::North), 13); // N(4) + S(9)
         assert_eq!(deal.partnership_hcp(Direction::East), 27);  // E(16) + W(11)
+    }
+
+    #[test]
+    fn test_deal_completeness() {
+        let pbn = "N:K843.T542.J6.863 AQJ7.K.Q75.AT942 962.AJ7.KT82.J75 T5.Q9863.A943.KQ";
+        let deal = Deal::from_pbn(pbn).unwrap();
+
+        assert_eq!(deal.total_cards(), 52);
+        assert!(deal.has_cards());
+        assert!(deal.is_complete());
+    }
+
+    #[test]
+    fn test_empty_deal() {
+        let deal = Deal::new();
+
+        assert_eq!(deal.total_cards(), 0);
+        assert!(!deal.has_cards());
+        assert!(!deal.is_complete());
     }
 }
