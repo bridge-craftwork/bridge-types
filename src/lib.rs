@@ -8,6 +8,8 @@
 //! - `Board` - complete board setup with vulnerability
 //! - `Contract`, `Strain` - contract and scoring types
 //! - `Auction`, `Call` - bidding sequence types
+//! - `Trick`, `PlaySequence` - card play tracking
+//! - `PlayerNames`, `ScoringMethod`, `Room` - metadata types
 
 mod card;
 mod direction;
@@ -16,6 +18,8 @@ mod deal;
 mod board;
 mod scoring;
 mod auction;
+mod play;
+mod metadata;
 
 pub use card::{Card, Suit, Rank};
 pub use direction::Direction;
@@ -24,3 +28,5 @@ pub use deal::Deal;
 pub use board::{Board, Vulnerability, dealer_from_board_number};
 pub use scoring::{Contract, Strain, Doubled, calculate_matchpoints};
 pub use auction::{Call, AnnotatedCall, Auction, FinalContract};
+pub use play::{Trick, PlaySequence};
+pub use metadata::{PlayerNames, ScoringMethod, Room, BoardResult};
