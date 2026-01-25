@@ -12,6 +12,9 @@ pub enum Call {
     Bid { level: u8, strain: Strain },
     Double,
     Redouble,
+    /// Indicates auction continues (used in teaching materials where student fills in next bid)
+    /// Represented as "+" in PBN, typically displayed as "?"
+    Continue,
 }
 
 impl Call {
@@ -20,13 +23,14 @@ impl Call {
         Call::Bid { level, strain }
     }
 
-    /// Parse a call from PBN notation (e.g., "1C", "3NT", "Pass", "X", "XX")
+    /// Parse a call from PBN notation (e.g., "1C", "3NT", "Pass", "X", "XX", "+")
     pub fn from_pbn(s: &str) -> Option<Self> {
         let s = s.trim();
         match s.to_uppercase().as_str() {
             "PASS" | "P" | "-" => Some(Call::Pass),
             "X" | "DBL" | "DOUBLE" => Some(Call::Double),
             "XX" | "RDBL" | "REDOUBLE" => Some(Call::Redouble),
+            "+" => Some(Call::Continue),
             _ => {
                 // Parse "1C", "2H", "3NT", etc.
                 let mut chars = s.chars();
@@ -47,6 +51,7 @@ impl Call {
             Call::Pass => "Pass".to_string(),
             Call::Double => "X".to_string(),
             Call::Redouble => "XX".to_string(),
+            Call::Continue => "+".to_string(),
             Call::Bid { level, strain } => format!("{}{}", level, strain.to_char()),
         }
     }
@@ -70,6 +75,11 @@ impl Call {
     pub fn is_redouble(&self) -> bool {
         matches!(self, Call::Redouble)
     }
+
+    /// Returns true if this is a Continue marker
+    pub fn is_continue(&self) -> bool {
+        matches!(self, Call::Continue)
+    }
 }
 
 impl fmt::Display for Call {
@@ -78,6 +88,7 @@ impl fmt::Display for Call {
             Call::Pass => write!(f, "Pass"),
             Call::Double => write!(f, "X"),
             Call::Redouble => write!(f, "XX"),
+            Call::Continue => write!(f, "?"),
             Call::Bid { level, strain } => write!(f, "{}{}", level, strain),
         }
     }
@@ -192,7 +203,7 @@ impl Auction {
                     doubled = false;
                     redoubled = true;
                 }
-                Call::Pass => {}
+                Call::Pass | Call::Continue => {}
             }
             current_player = current_player.next();
         }
@@ -362,8 +373,16 @@ mod tests {
         assert_eq!(Call::Pass.to_string(), "Pass");
         assert_eq!(Call::Double.to_string(), "X");
         assert_eq!(Call::Redouble.to_string(), "XX");
+        assert_eq!(Call::Continue.to_string(), "?");
         assert_eq!(Call::bid(1, Strain::Clubs).to_string(), "1♣");
         assert_eq!(Call::bid(3, Strain::NoTrump).to_string(), "3NT");
+    }
+
+    #[test]
+    fn test_call_continue() {
+        assert_eq!(Call::from_pbn("+"), Some(Call::Continue));
+        assert!(Call::Continue.is_continue());
+        assert_eq!(Call::Continue.to_pbn(), "+");
     }
 
     #[test]
