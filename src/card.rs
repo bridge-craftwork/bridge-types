@@ -65,6 +65,16 @@ impl Suit {
     pub fn is_major(&self) -> bool {
         matches!(self, Suit::Hearts | Suit::Spades)
     }
+
+    /// Whether this is a red suit (hearts or diamonds)
+    pub fn is_red(&self) -> bool {
+        matches!(self, Suit::Hearts | Suit::Diamonds)
+    }
+
+    /// Whether this is a black suit (spades or clubs)
+    pub fn is_black(&self) -> bool {
+        matches!(self, Suit::Spades | Suit::Clubs)
+    }
 }
 
 impl std::fmt::Display for Suit {
@@ -283,5 +293,18 @@ mod tests {
     fn test_card_display() {
         let card = Card::new(Suit::Spades, Rank::Ace);
         assert_eq!(format!("{}", card), "♠A");
+    }
+
+    #[test]
+    fn test_suit_colors() {
+        assert!(!Suit::Spades.is_red());
+        assert!(Suit::Hearts.is_red());
+        assert!(Suit::Diamonds.is_red());
+        assert!(!Suit::Clubs.is_red());
+
+        assert!(Suit::Spades.is_black());
+        assert!(!Suit::Hearts.is_black());
+        assert!(!Suit::Diamonds.is_black());
+        assert!(Suit::Clubs.is_black());
     }
 }
