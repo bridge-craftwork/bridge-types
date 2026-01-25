@@ -30,6 +30,22 @@ impl Strain {
         matches!(self, Strain::Hearts | Strain::Spades)
     }
 
+    /// Whether this is a red suit (hearts or diamonds)
+    pub fn is_red(&self) -> bool {
+        matches!(self, Strain::Hearts | Strain::Diamonds)
+    }
+
+    /// Get the Unicode symbol for this strain
+    pub fn symbol(&self) -> &'static str {
+        match self {
+            Strain::Clubs => "♣",
+            Strain::Diamonds => "♦",
+            Strain::Hearts => "♥",
+            Strain::Spades => "♠",
+            Strain::NoTrump => "NT",
+        }
+    }
+
     /// Points per trick for this strain
     pub fn trick_value(&self) -> i32 {
         match self {
