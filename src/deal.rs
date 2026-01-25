@@ -1,6 +1,8 @@
 //! Deal type representing all four hands at a bridge table.
 
-use crate::{Direction, Hand};
+use std::collections::HashSet;
+
+use crate::{Card, Direction, Hand};
 
 /// Represents a complete bridge deal (all four hands)
 #[derive(Debug, Clone, Default)]
@@ -106,6 +108,49 @@ impl Deal {
     pub fn is_complete(&self) -> bool {
         self.total_cards() == 52
     }
+
+    /// Returns true if the deal has no duplicate cards
+    pub fn is_valid(&self) -> bool {
+        let mut seen = HashSet::new();
+        for dir in Direction::ALL {
+            for card in self.hand(dir).cards() {
+                if !seen.insert(*card) {
+                    return false; // Duplicate card found
+                }
+            }
+        }
+        true
+    }
+
+    /// Returns the number of tricks in this deal (total cards / 4)
+    ///
+    /// A complete deal has 13 tricks. Partial deals may have fewer.
+    pub fn trick_count(&self) -> usize {
+        self.total_cards() / 4
+    }
+
+    /// Collects all cards in the deal into a vector
+    pub fn all_cards(&self) -> Vec<Card> {
+        let mut cards = Vec::with_capacity(52);
+        for dir in Direction::ALL {
+            cards.extend(self.hand(dir).cards().iter().copied());
+        }
+        cards
+    }
+
+    /// Find duplicate cards in the deal, if any
+    pub fn find_duplicates(&self) -> Vec<Card> {
+        let mut seen = HashSet::new();
+        let mut duplicates = Vec::new();
+        for dir in Direction::ALL {
+            for card in self.hand(dir).cards() {
+                if !seen.insert(*card) {
+                    duplicates.push(*card);
+                }
+            }
+        }
+        duplicates
+    }
 }
 
 #[cfg(test)]
@@ -161,5 +206,56 @@ mod tests {
         assert_eq!(deal.total_cards(), 0);
         assert!(!deal.has_cards());
         assert!(!deal.is_complete());
+    }
+
+    #[test]
+    fn test_deal_validity() {
+        // Valid deal - no duplicates
+        let pbn = "N:K843.T542.J6.863 AQJ7.K.Q75.AT942 962.AJ7.KT82.J75 T5.Q9863.A943.KQ";
+        let deal = Deal::from_pbn(pbn).unwrap();
+        assert!(deal.is_valid());
+        assert!(deal.find_duplicates().is_empty());
+    }
+
+    #[test]
+    fn test_deal_with_duplicates() {
+        use crate::{Card, Rank, Suit};
+
+        // Create a deal with duplicate cards
+        let mut deal = Deal::new();
+        let mut north = Hand::new();
+        let mut east = Hand::new();
+
+        // Add same card to both hands
+        north.add_card(Card::new(Suit::Spades, Rank::Ace));
+        east.add_card(Card::new(Suit::Spades, Rank::Ace)); // Duplicate!
+
+        deal.north = north;
+        deal.east = east;
+
+        assert!(!deal.is_valid());
+        let dups = deal.find_duplicates();
+        assert_eq!(dups.len(), 1);
+        assert_eq!(dups[0], Card::new(Suit::Spades, Rank::Ace));
+    }
+
+    #[test]
+    fn test_trick_count() {
+        // Complete deal = 13 tricks
+        let pbn = "N:K843.T542.J6.863 AQJ7.K.Q75.AT942 962.AJ7.KT82.J75 T5.Q9863.A943.KQ";
+        let deal = Deal::from_pbn(pbn).unwrap();
+        assert_eq!(deal.trick_count(), 13);
+
+        // Empty deal = 0 tricks
+        let empty = Deal::new();
+        assert_eq!(empty.trick_count(), 0);
+    }
+
+    #[test]
+    fn test_all_cards() {
+        let pbn = "N:K843.T542.J6.863 AQJ7.K.Q75.AT942 962.AJ7.KT82.J75 T5.Q9863.A943.KQ";
+        let deal = Deal::from_pbn(pbn).unwrap();
+        let cards = deal.all_cards();
+        assert_eq!(cards.len(), 52);
     }
 }
