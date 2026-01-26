@@ -15,6 +15,10 @@ pub enum Call {
     /// Indicates auction continues (used in teaching materials where student fills in next bid)
     /// Represented as "+" in PBN, typically displayed as "?"
     Continue,
+    /// A blank placeholder for fill-in-the-blank exercises
+    /// Represented as one or more underscores in PBN (e.g., "____" or "_____")
+    /// Typically displayed as a horizontal line for students to write their answer
+    Blank,
 }
 
 impl Call {
@@ -23,7 +27,7 @@ impl Call {
         Call::Bid { level, strain }
     }
 
-    /// Parse a call from PBN notation (e.g., "1C", "3NT", "Pass", "X", "XX", "+")
+    /// Parse a call from PBN notation (e.g., "1C", "3NT", "Pass", "X", "XX", "+", "____")
     pub fn from_pbn(s: &str) -> Option<Self> {
         let s = s.trim();
         match s.to_uppercase().as_str() {
@@ -32,6 +36,11 @@ impl Call {
             "XX" | "RDBL" | "REDOUBLE" => Some(Call::Redouble),
             "+" => Some(Call::Continue),
             _ => {
+                // Check for underscore sequences (blanks for fill-in exercises)
+                if s.chars().all(|c| c == '_') && !s.is_empty() {
+                    return Some(Call::Blank);
+                }
+
                 // Parse "1C", "2H", "3NT", etc.
                 let mut chars = s.chars();
                 let level = chars.next()?.to_digit(10)? as u8;
@@ -52,6 +61,7 @@ impl Call {
             Call::Double => "X".to_string(),
             Call::Redouble => "XX".to_string(),
             Call::Continue => "+".to_string(),
+            Call::Blank => "_____".to_string(),
             Call::Bid { level, strain } => format!("{}{}", level, strain.to_char()),
         }
     }
@@ -80,6 +90,11 @@ impl Call {
     pub fn is_continue(&self) -> bool {
         matches!(self, Call::Continue)
     }
+
+    /// Returns true if this is a Blank (fill-in exercise placeholder)
+    pub fn is_blank(&self) -> bool {
+        matches!(self, Call::Blank)
+    }
 }
 
 impl fmt::Display for Call {
@@ -89,6 +104,7 @@ impl fmt::Display for Call {
             Call::Double => write!(f, "X"),
             Call::Redouble => write!(f, "XX"),
             Call::Continue => write!(f, "?"),
+            Call::Blank => write!(f, "_____"),
             Call::Bid { level, strain } => write!(f, "{}{}", level, strain),
         }
     }
@@ -203,7 +219,7 @@ impl Auction {
                     doubled = false;
                     redoubled = true;
                 }
-                Call::Pass | Call::Continue => {}
+                Call::Pass | Call::Continue | Call::Blank => {}
             }
             current_player = current_player.next();
         }
@@ -225,6 +241,7 @@ impl Auction {
 
         let mut current = self.dealer;
         for annotated in &self.calls {
+            // Active calls that count as bidding (not Pass, Continue, or Blank)
             if annotated.call.is_bid() || annotated.call.is_double() || annotated.call.is_redouble() {
                 match current {
                     Direction::North | Direction::South => ns_bid = true,
@@ -383,6 +400,18 @@ mod tests {
         assert_eq!(Call::from_pbn("+"), Some(Call::Continue));
         assert!(Call::Continue.is_continue());
         assert_eq!(Call::Continue.to_pbn(), "+");
+    }
+
+    #[test]
+    fn test_call_blank() {
+        // Single underscore
+        assert_eq!(Call::from_pbn("_"), Some(Call::Blank));
+        // Multiple underscores (common in teaching materials)
+        assert_eq!(Call::from_pbn("____"), Some(Call::Blank));
+        assert_eq!(Call::from_pbn("_____"), Some(Call::Blank));
+        assert!(Call::Blank.is_blank());
+        assert_eq!(Call::Blank.to_pbn(), "_____");
+        assert_eq!(Call::Blank.to_string(), "_____");
     }
 
     #[test]
