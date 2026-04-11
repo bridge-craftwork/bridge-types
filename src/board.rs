@@ -93,6 +93,13 @@ pub struct Board {
     pub dealer: Option<Direction>,
     pub vulnerable: Vulnerability,
     pub deal: Deal,
+    pub player_names: Option<crate::PlayerNames>,
+    pub auction: Option<crate::Auction>,
+    pub contract: Option<String>,
+    pub declarer: Option<Direction>,
+    pub play: Option<crate::PlaySequence>,
+    pub result: Option<i8>,
+    pub commentary: Vec<String>,
     pub double_dummy_tricks: Option<String>,
     pub optimum_score: Option<String>,
     pub par_contract: Option<String>,
@@ -125,6 +132,48 @@ impl Board {
     /// Builder: set deal
     pub fn with_deal(mut self, deal: Deal) -> Self {
         self.deal = deal;
+        self
+    }
+
+    /// Builder: set player names
+    pub fn with_player_names(mut self, names: crate::PlayerNames) -> Self {
+        self.player_names = Some(names);
+        self
+    }
+
+    /// Builder: set auction
+    pub fn with_auction(mut self, auction: crate::Auction) -> Self {
+        self.auction = Some(auction);
+        self
+    }
+
+    /// Builder: set contract string (e.g., "3NT", "4SX")
+    pub fn with_contract(mut self, contract: String) -> Self {
+        self.contract = Some(contract);
+        self
+    }
+
+    /// Builder: set declarer
+    pub fn with_declarer(mut self, declarer: Direction) -> Self {
+        self.declarer = Some(declarer);
+        self
+    }
+
+    /// Builder: set play sequence
+    pub fn with_play(mut self, play: crate::PlaySequence) -> Self {
+        self.play = Some(play);
+        self
+    }
+
+    /// Builder: set result (tricks taken)
+    pub fn with_result(mut self, result: i8) -> Self {
+        self.result = Some(result);
+        self
+    }
+
+    /// Builder: add commentary text
+    pub fn with_commentary(mut self, text: String) -> Self {
+        self.commentary.push(text);
         self
     }
 
