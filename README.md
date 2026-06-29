@@ -22,7 +22,7 @@ Core data types for contract bridge applications in Rust.
 
 ```toml
 [dependencies]
-bridge-types = { git = "https://github.com/Rick-Wilson/bridge-types" }
+bridge-types = { git = "https://github.com/bridge-craftwork/bridge-types" }
 ```
 
 ## Quick Start
@@ -101,8 +101,8 @@ Reference: https://www.tistis.nl/pbn/pbn_v21.txt
 
 ## Related Crates
 
-- [`bridge-encodings`](https://github.com/Rick-Wilson/bridge-encodings) - PBN, LIN, BWS file format parsers
-- [`bridge-solver`](https://github.com/Rick-Wilson/bridge-solver) - Double-dummy analysis
+- [`bridge-encodings`](https://github.com/bridge-craftwork/bridge-encodings) - PBN, LIN, BWS file format parsers
+- [`bridge-solver`](https://github.com/bridge-craftwork/bridge-solver) - Double-dummy analysis
 
 ## License
 
