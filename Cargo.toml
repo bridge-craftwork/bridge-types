@@ -2,7 +2,7 @@
 name = "bridge-types"
 version = "0.1.0"
 edition = "2021"
-license = "MIT"
+license = "Unlicense"
 description = "Core bridge types: Card, Hand, Deal, Board, Contract, and evaluation methods"
 repository = "https://github.com/bridge-craftwork/bridge-types"
 
