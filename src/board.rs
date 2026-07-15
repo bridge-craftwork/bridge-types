@@ -87,6 +87,9 @@ pub fn dealer_from_board_number(board: u32) -> Direction {
 #[derive(Debug, Clone, Default)]
 pub struct Board {
     pub number: Option<u32>,
+    /// Raw `[Board]` identifier as written, e.g. "1" or "1-1". Preserves
+    /// non-integer ids (common in lesson sets) that `number` cannot hold.
+    pub board_id: Option<String>,
     pub event: Option<String>,
     pub site: Option<String>,
     pub date: Option<String>,
@@ -120,6 +123,12 @@ impl Board {
     /// Builder: set board number
     pub fn with_number(mut self, number: u32) -> Self {
         self.number = Some(number);
+        self
+    }
+
+    /// Builder: set the raw board identifier (e.g. "1-1").
+    pub fn with_board_id(mut self, id: impl Into<String>) -> Self {
+        self.board_id = Some(id.into());
         self
     }
 
