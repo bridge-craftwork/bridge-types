@@ -103,6 +103,12 @@ pub struct Board {
     pub double_dummy_tricks: Option<String>,
     pub optimum_score: Option<String>,
     pub par_contract: Option<String>,
+    /// Supplemental PBN tag pairs not modeled by a dedicated field, in the order
+    /// encountered. The PBN spec explicitly permits arbitrary supplemental tags
+    /// (e.g. `[SkillPath ...]`, bridge-mastery tags); this preserves them rather
+    /// than discarding them, so parsers round-trip and consumers can inventory
+    /// them. Standard tags that DO have a dedicated field never land here.
+    pub extra_tags: Vec<(String, String)>,
 }
 
 impl Board {
@@ -175,6 +181,20 @@ impl Board {
     pub fn with_commentary(mut self, text: String) -> Self {
         self.commentary.push(text);
         self
+    }
+
+    /// Builder: record a supplemental (non-standard) PBN tag pair.
+    pub fn with_extra_tag(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        self.extra_tags.push((name.into(), value.into()));
+        self
+    }
+
+    /// Look up a supplemental tag's value by name (first match).
+    pub fn extra_tag(&self, name: &str) -> Option<&str> {
+        self.extra_tags
+            .iter()
+            .find(|(n, _)| n == name)
+            .map(|(_, v)| v.as_str())
     }
 
     /// Generate a title string for the board
