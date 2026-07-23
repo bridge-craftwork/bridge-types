@@ -179,7 +179,9 @@ pub struct BoardResult {
 impl BoardResult {
     /// Create a new result
     pub fn new(tricks: u8) -> Self {
-        Self { tricks: tricks.min(13) }
+        Self {
+            tricks: tricks.min(13),
+        }
     }
 
     /// Parse from PBN Result tag value
@@ -266,9 +268,15 @@ mod tests {
 
     #[test]
     fn test_scoring_method() {
-        assert_eq!(ScoringMethod::from_pbn("MP"), Some(ScoringMethod::Matchpoints));
+        assert_eq!(
+            ScoringMethod::from_pbn("MP"),
+            Some(ScoringMethod::Matchpoints)
+        );
         assert_eq!(ScoringMethod::from_pbn("IMP"), Some(ScoringMethod::IMP));
-        assert_eq!(ScoringMethod::from_pbn("MP;Butler"), Some(ScoringMethod::Matchpoints));
+        assert_eq!(
+            ScoringMethod::from_pbn("MP;Butler"),
+            Some(ScoringMethod::Matchpoints)
+        );
 
         assert!(ScoringMethod::IMP.is_teams());
         assert!(ScoringMethod::Matchpoints.is_pairs());

@@ -110,11 +110,9 @@ impl Hand {
 
     /// Sort the hand by suit (spades first) and rank (high to low)
     pub fn sort(&mut self) {
-        self.cards.sort_by(|a, b| {
-            match b.suit.cmp(&a.suit) {
-                std::cmp::Ordering::Equal => b.rank.cmp(&a.rank),
-                other => other,
-            }
+        self.cards.sort_by(|a, b| match b.suit.cmp(&a.suit) {
+            std::cmp::Ordering::Equal => b.rank.cmp(&a.rank),
+            other => other,
         });
     }
 
@@ -180,10 +178,14 @@ impl Hand {
             return 0;
         }
 
-        cards.sort_by(|a, b| b.rank.cmp(&a.rank));
+        cards.sort_by_key(|c| std::cmp::Reverse(c.rank));
 
         if len == 1 {
-            if cards[0].rank == Rank::Ace { 0 } else { 1 }
+            if cards[0].rank == Rank::Ace {
+                0
+            } else {
+                1
+            }
         } else if len == 2 {
             let has_ace = cards.iter().any(|c| c.rank == Rank::Ace);
             let has_king = cards.iter().any(|c| c.rank == Rank::King);
@@ -302,7 +304,7 @@ impl Hand {
             return 0;
         }
 
-        cards.sort_by(|a, b| b.rank.cmp(&a.rank));
+        cards.sort_by_key(|c| std::cmp::Reverse(c.rank));
 
         let has_ace = cards.iter().any(|c| c.rank == Rank::Ace);
         let has_king = cards.iter().any(|c| c.rank == Rank::King);
@@ -385,7 +387,7 @@ impl Hand {
                 continue;
             }
 
-            cards.sort_by(|a, b| b.rank.cmp(&a.rank));
+            cards.sort_by_key(|c| std::cmp::Reverse(c.rank));
 
             let has_ace = cards.iter().any(|c| c.rank == Rank::Ace);
             let has_king = cards.iter().any(|c| c.rank == Rank::King);
@@ -492,7 +494,7 @@ impl Hand {
 
         for suit in [Suit::Spades, Suit::Hearts, Suit::Diamonds, Suit::Clubs] {
             let mut cards: Vec<Card> = self.cards_in_suit(suit);
-            cards.sort_by(|a, b| b.rank.cmp(&a.rank));
+            cards.sort_by_key(|c| std::cmp::Reverse(c.rank));
             let holding: String = cards.iter().map(|c| c.rank.to_char()).collect();
             result.push(holding);
         }

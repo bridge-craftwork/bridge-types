@@ -63,7 +63,12 @@ impl Direction {
 
     /// Returns directions in clockwise order starting from this direction
     pub fn clockwise_from(&self) -> [Direction; 4] {
-        [*self, self.next(), self.next().next(), self.next().next().next()]
+        [
+            *self,
+            self.next(),
+            self.next().next(),
+            self.next().next().next(),
+        ]
     }
 
     /// Convert to index (North=0, East=1, South=2, West=3)
@@ -136,7 +141,12 @@ mod tests {
     fn test_direction_clockwise() {
         assert_eq!(
             Direction::East.clockwise_from(),
-            [Direction::East, Direction::South, Direction::West, Direction::North]
+            [
+                Direction::East,
+                Direction::South,
+                Direction::West,
+                Direction::North
+            ]
         );
     }
 

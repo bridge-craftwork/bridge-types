@@ -56,6 +56,11 @@ impl Strain {
     }
 
     /// Parse strain from string
+    // Shadows `std::str::FromStr::from_str` by name. Kept as-is deliberately:
+    // this is public API of a crate consumed by several sibling repos, so
+    // renaming it (or moving to a real `FromStr` impl, whose `Err` type would
+    // change callers) is a breaking change that doesn't belong in a CI PR.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Strain> {
         match s.to_uppercase().as_str() {
             "C" | "CLUBS" => Some(Strain::Clubs),
@@ -103,7 +108,12 @@ pub enum Doubled {
 impl Contract {
     /// Create a new contract
     pub fn new(level: u8, strain: Strain, doubled: Doubled, declarer: char) -> Self {
-        Contract { level, strain, doubled, declarer }
+        Contract {
+            level,
+            strain,
+            doubled,
+            declarer,
+        }
     }
 
     /// Parse a contract string like "3 NT", "4 S X", "6 H XX"
@@ -162,10 +172,11 @@ impl Contract {
             return Some(0);
         }
 
-        if s.starts_with('+') {
-            s[1..].parse::<i32>().ok()
-        } else if s.starts_with('-') {
-            s.parse::<i32>().ok()
+        // A leading '+' must be stripped (i32 won't parse it); '-' is parsed
+        // as-is, which is also what a bare number needs — so those two arms
+        // were identical and collapse into the `else`.
+        if let Some(rest) = s.strip_prefix('+') {
+            rest.parse::<i32>().ok()
         } else {
             s.parse::<i32>().ok()
         }
@@ -199,14 +210,30 @@ impl Contract {
         };
 
         let game_bonus = if contract_value >= 100 {
-            if vulnerable { 500 } else { 300 }
+            if vulnerable {
+                500
+            } else {
+                300
+            }
         } else {
             50
         };
 
         let slam_bonus = match self.level {
-            6 => if vulnerable { 750 } else { 500 },
-            7 => if vulnerable { 1500 } else { 1000 },
+            6 => {
+                if vulnerable {
+                    750
+                } else {
+                    500
+                }
+            }
+            7 => {
+                if vulnerable {
+                    1500
+                } else {
+                    1000
+                }
+            }
             _ => 0,
         };
 

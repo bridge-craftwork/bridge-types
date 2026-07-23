@@ -186,7 +186,7 @@ mod tests {
         let deal = Deal::from_pbn(pbn).unwrap();
 
         assert_eq!(deal.partnership_hcp(Direction::North), 13); // N(4) + S(9)
-        assert_eq!(deal.partnership_hcp(Direction::East), 27);  // E(16) + W(11)
+        assert_eq!(deal.partnership_hcp(Direction::East), 27); // E(16) + W(11)
     }
 
     #[test]
