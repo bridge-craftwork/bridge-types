@@ -11,22 +11,22 @@
 //! - `Trick`, `PlaySequence` - card play tracking
 //! - `PlayerNames`, `ScoringMethod`, `Room` - metadata types
 
+mod auction;
+mod board;
 mod card;
+mod deal;
 mod direction;
 mod hand;
-mod deal;
-mod board;
-mod scoring;
-mod auction;
-mod play;
 mod metadata;
+mod play;
+mod scoring;
 
-pub use card::{Card, Suit, Rank};
+pub use auction::{AnnotatedCall, Auction, Call, FinalContract};
+pub use board::{dealer_from_board_number, Board, Vulnerability};
+pub use card::{Card, Rank, Suit};
+pub use deal::Deal;
 pub use direction::Direction;
 pub use hand::Hand;
-pub use deal::Deal;
-pub use board::{Board, Vulnerability, dealer_from_board_number};
-pub use scoring::{Contract, Strain, Doubled, calculate_matchpoints};
-pub use auction::{Call, AnnotatedCall, Auction, FinalContract};
-pub use play::{Trick, PlaySequence};
-pub use metadata::{PlayerNames, ScoringMethod, Room, BoardResult};
+pub use metadata::{BoardResult, PlayerNames, Room, ScoringMethod};
+pub use play::{PlaySequence, Trick};
+pub use scoring::{calculate_matchpoints, Contract, Doubled, Strain};

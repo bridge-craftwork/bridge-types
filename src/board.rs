@@ -247,8 +247,14 @@ mod tests {
     fn test_vulnerability_parsing() {
         assert_eq!(Vulnerability::from_pbn("None"), Some(Vulnerability::None));
         assert_eq!(Vulnerability::from_pbn("-"), Some(Vulnerability::None));
-        assert_eq!(Vulnerability::from_pbn("NS"), Some(Vulnerability::NorthSouth));
-        assert_eq!(Vulnerability::from_pbn("E-W"), Some(Vulnerability::EastWest));
+        assert_eq!(
+            Vulnerability::from_pbn("NS"),
+            Some(Vulnerability::NorthSouth)
+        );
+        assert_eq!(
+            Vulnerability::from_pbn("E-W"),
+            Some(Vulnerability::EastWest)
+        );
         assert_eq!(Vulnerability::from_pbn("Both"), Some(Vulnerability::Both));
         assert_eq!(Vulnerability::from_pbn("All"), Some(Vulnerability::Both));
     }
@@ -264,7 +270,10 @@ mod tests {
     #[test]
     fn test_vulnerability_from_board() {
         assert_eq!(Vulnerability::from_board_number(1), Vulnerability::None);
-        assert_eq!(Vulnerability::from_board_number(2), Vulnerability::NorthSouth);
+        assert_eq!(
+            Vulnerability::from_board_number(2),
+            Vulnerability::NorthSouth
+        );
         assert_eq!(Vulnerability::from_board_number(3), Vulnerability::EastWest);
         assert_eq!(Vulnerability::from_board_number(4), Vulnerability::Both);
         assert_eq!(Vulnerability::from_board_number(17), Vulnerability::None);

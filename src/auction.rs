@@ -9,7 +9,10 @@ use crate::{Direction, Strain};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Call {
     Pass,
-    Bid { level: u8, strain: Strain },
+    Bid {
+        level: u8,
+        strain: Strain,
+    },
     Double,
     Redouble,
     /// Indicates auction continues (used in teaching materials where student fills in next bid)
@@ -184,8 +187,7 @@ impl Auction {
 
     /// Returns true if the auction ended in a passed-out deal (4 passes)
     pub fn is_passed_out(&self) -> bool {
-        self.calls.len() >= 4
-            && self.calls.iter().all(|ac| ac.call.is_pass())
+        self.calls.len() >= 4 && self.calls.iter().all(|ac| ac.call.is_pass())
     }
 
     /// Get the direction of the player who made the Nth call (0-indexed)
@@ -242,7 +244,8 @@ impl Auction {
         let mut current = self.dealer;
         for annotated in &self.calls {
             // Active calls that count as bidding (not Pass, Continue, or Blank)
-            if annotated.call.is_bid() || annotated.call.is_double() || annotated.call.is_redouble() {
+            if annotated.call.is_bid() || annotated.call.is_double() || annotated.call.is_redouble()
+            {
                 match current {
                     Direction::North | Direction::South => ns_bid = true,
                     Direction::East | Direction::West => ew_bid = true,
@@ -373,15 +376,24 @@ mod tests {
         assert_eq!(Call::from_pbn("XX"), Some(Call::Redouble));
         assert_eq!(
             Call::from_pbn("1C"),
-            Some(Call::Bid { level: 1, strain: Strain::Clubs })
+            Some(Call::Bid {
+                level: 1,
+                strain: Strain::Clubs
+            })
         );
         assert_eq!(
             Call::from_pbn("3NT"),
-            Some(Call::Bid { level: 3, strain: Strain::NoTrump })
+            Some(Call::Bid {
+                level: 3,
+                strain: Strain::NoTrump
+            })
         );
         assert_eq!(
             Call::from_pbn("7S"),
-            Some(Call::Bid { level: 7, strain: Strain::Spades })
+            Some(Call::Bid {
+                level: 7,
+                strain: Strain::Spades
+            })
         );
     }
 
@@ -482,10 +494,7 @@ mod tests {
 
     #[test]
     fn test_annotated_call() {
-        let call = AnnotatedCall::with_annotation(
-            Call::bid(2, Strain::Clubs),
-            "Stayman"
-        );
+        let call = AnnotatedCall::with_annotation(Call::bid(2, Strain::Clubs), "Stayman");
         assert!(call.has_annotation());
         assert_eq!(call.annotation.as_deref(), Some("Stayman"));
     }
