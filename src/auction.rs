@@ -200,15 +200,39 @@ impl Auction {
     }
 
     /// Returns the final contract, if any (None if passed out)
+    ///
+    /// The declarer is the *first* player of the contract side to have named
+    /// the final strain — not whoever made the last bid. Over
+    /// `1S - Pass - 4S` the opener declares, not the raiser. Declarer fixes
+    /// the opening leader (declarer's LHO), so this distinction matters to
+    /// anything that goes on to play or solve the deal.
     pub fn final_contract(&self) -> Option<FinalContract> {
+        /// Index a strain without requiring `Hash`/`Ord` on it.
+        fn strain_index(strain: Strain) -> usize {
+            match strain {
+                Strain::Clubs => 0,
+                Strain::Diamonds => 1,
+                Strain::Hearts => 2,
+                Strain::Spades => 3,
+                Strain::NoTrump => 4,
+            }
+        }
+        fn is_ns(seat: Direction) -> bool {
+            matches!(seat, Direction::North | Direction::South)
+        }
+
         let mut last_bid: Option<(u8, Strain, Direction)> = None;
         let mut doubled = false;
         let mut redoubled = false;
         let mut current_player = self.dealer;
+        // [side][strain] -> the first seat of that side to name that strain.
+        let mut first_named: [[Option<Direction>; 5]; 2] = [[None; 5], [None; 5]];
 
         for annotated in &self.calls {
             match &annotated.call {
                 Call::Bid { level, strain } => {
+                    let side = usize::from(is_ns(current_player));
+                    first_named[side][strain_index(*strain)].get_or_insert(current_player);
                     last_bid = Some((*level, *strain, current_player));
                     doubled = false;
                     redoubled = false;
@@ -226,12 +250,16 @@ impl Auction {
             current_player = current_player.next();
         }
 
-        last_bid.map(|(level, strain, declarer)| FinalContract {
+        last_bid.map(|(level, strain, bidder)| FinalContract {
             level,
             strain,
             doubled,
             redoubled,
-            declarer,
+            // The final bidder's own side named the strain at least once (that
+            // bid), so the lookup always hits; fall back to the bidder rather
+            // than discard an otherwise valid contract.
+            declarer: first_named[usize::from(is_ns(bidder))][strain_index(strain)]
+                .unwrap_or(bidder),
         })
     }
 
@@ -452,6 +480,77 @@ mod tests {
         assert_eq!(contract.level, 3);
         assert_eq!(contract.strain, Strain::NoTrump);
         assert!(!contract.doubled);
+        // North named notrump first, so North declares — not South, who made
+        // the last bid.
+        assert_eq!(contract.declarer, Direction::North);
+    }
+
+    /// Build an auction from PBN call tokens, e.g. `"1S Pass 4S Pass Pass Pass"`.
+    fn auction_from_pbn(dealer: Direction, calls: &str) -> Auction {
+        let mut auction = Auction::new(dealer);
+        for token in calls.split_whitespace() {
+            auction.add_call(Call::from_pbn(token).expect("valid call token"));
+        }
+        auction
+    }
+
+    #[test]
+    fn test_declarer_is_first_to_name_strain_not_last_bidder() {
+        // North opens 1S, South raises to 4S. North named spades first, so
+        // North declares and East is on lead.
+        let auction = auction_from_pbn(Direction::North, "1S Pass 4S Pass Pass Pass");
+
+        let contract = auction.final_contract().unwrap();
+        assert_eq!(contract.level, 4);
+        assert_eq!(contract.strain, Strain::Spades);
+        assert_eq!(contract.declarer, Direction::North);
+        // Opening leader is declarer's LHO — the reason this matters.
+        assert_eq!(contract.declarer.next(), Direction::East);
+    }
+
+    #[test]
+    fn test_declarer_reference_board_from_bbo() {
+        // A real board from BBO, cross-checked against Bridge Base's own BSOL
+        // analysis. Dealer South; East bids the final 3NT, but West named
+        // notrump first with the 1NT opener, so West declares. West holds 16
+        // HCP (A5.AK97.732.KQ72), which independently confirms the opener.
+        let auction = auction_from_pbn(
+            Direction::South,
+            "Pass 1NT Pass 2C Pass 2H Pass 3NT Pass Pass Pass",
+        );
+
+        let contract = auction.final_contract().unwrap();
+        assert_eq!(contract.level, 3);
+        assert_eq!(contract.strain, Strain::NoTrump);
+        assert!(!contract.doubled);
+        assert!(!contract.redoubled);
+        assert_eq!(contract.declarer, Direction::West);
+        assert_eq!(contract.declarer.next(), Direction::North);
+    }
+
+    #[test]
+    fn test_declarer_ignores_opponents_naming_same_strain() {
+        // North deals: 1C by North, 1H by East, Pass, 4H by West. The
+        // declaring side is E-W, and East named hearts first for that side.
+        // North's earlier clubs bid must not confuse the lookup.
+        let auction = auction_from_pbn(Direction::North, "1C 1H Pass 4H Pass Pass Pass");
+
+        let contract = auction.final_contract().unwrap();
+        assert_eq!(contract.level, 4);
+        assert_eq!(contract.strain, Strain::Hearts);
+        assert_eq!(contract.declarer, Direction::East);
+    }
+
+    #[test]
+    fn test_declarer_with_doubled_contract_after_competitive_auction() {
+        // East deals. E 1H, S 1S, W 2H, N 4S, E Double. N-S declare in
+        // spades; South named spades first, so South declares doubled.
+        let auction = auction_from_pbn(Direction::East, "1H 1S 2H 4S X Pass Pass Pass");
+
+        let contract = auction.final_contract().unwrap();
+        assert_eq!(contract.level, 4);
+        assert_eq!(contract.strain, Strain::Spades);
+        assert!(contract.doubled);
         assert_eq!(contract.declarer, Direction::South);
     }
 
