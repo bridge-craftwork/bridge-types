@@ -1,6 +1,6 @@
 //! Board and Vulnerability types for bridge.
 
-use crate::{Deal, Direction};
+use crate::{DdTable, Deal, Direction};
 use std::fmt;
 
 /// Represents vulnerability state for a board
@@ -119,8 +119,20 @@ pub struct Board {
     pub play: Option<crate::PlaySequence>,
     pub result: Option<i8>,
     pub commentary: Vec<String>,
-    pub double_dummy_tricks: Option<String>,
+    /// The board's double-dummy results, decoded.
+    ///
+    /// Held as a table rather than as the raw `DoubleDummyTricks` tag value,
+    /// because every consumer wanted the numbers and each was decoding the
+    /// twenty-character string itself. `bridge-encodings` owns that codec.
+    pub double_dummy_tricks: Option<DdTable>,
+    /// The `OptimumScore` tag as written, e.g. `"NS 420"`.
+    ///
+    /// Still a string, unlike [`Self::double_dummy_tricks`]: the types that
+    /// would model a par result live in `bridge-solver`, which nothing this low
+    /// may depend on, and no consumer has been found decoding this by hand.
     pub optimum_score: Option<String>,
+    /// The `ParContract` tag as written, e.g. `"NS 4HX="`. A string for the
+    /// same reason as [`Self::optimum_score`].
     pub par_contract: Option<String>,
     /// Supplemental PBN tag pairs not modeled by a dedicated field, in the order
     /// encountered. The PBN spec explicitly permits arbitrary supplemental tags
