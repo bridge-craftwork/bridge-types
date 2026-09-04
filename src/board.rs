@@ -83,6 +83,22 @@ pub fn dealer_from_board_number(board: u32) -> Direction {
     }
 }
 
+/// A `%` directive or `;` comment preserved verbatim from a PBN record.
+///
+/// These are not board content, but they are file content. `%` is where Bridge
+/// Composer keeps fonts, page setup and colours; `;` is where a hand author
+/// leaves notes. Dropping them means a read/write cycle silently strips a
+/// user's page layout, so a board carries the ones from its own record.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Directive {
+    /// The line exactly as written, including its leading `%` or `;`.
+    pub text: String,
+    /// Name of the tag this line followed in the source record, or `None` if it
+    /// preceded every tag. A writer re-emits the line after that tag, so it
+    /// keeps its place even though the writer chooses its own tag order.
+    pub after_tag: Option<String>,
+}
+
 /// Represents a complete bridge board with metadata
 #[derive(Debug, Clone, Default)]
 pub struct Board {
@@ -112,6 +128,11 @@ pub struct Board {
     /// than discarding them, so parsers round-trip and consumers can inventory
     /// them. Standard tags that DO have a dedicated field never land here.
     pub extra_tags: Vec<(String, String)>,
+    /// `%` directives and `;` comments from this board's record, in the order
+    /// encountered, each anchored to the tag it followed. Preserved so a
+    /// read/write cycle re-emits them in place rather than discarding them; see
+    /// [`Directive`].
+    pub directives: Vec<Directive>,
 }
 
 impl Board {
@@ -206,6 +227,36 @@ impl Board {
             .map(|(_, v)| v.as_str())
     }
 
+    /// Builder: preserve a `%` directive or `;` comment.
+    ///
+    /// `after_tag` names the tag the line followed in the source record, or is
+    /// `None` if it came before every tag.
+    pub fn with_directive(mut self, text: impl Into<String>, after_tag: Option<&str>) -> Self {
+        self.directives.push(Directive {
+            text: text.into(),
+            after_tag: after_tag.map(str::to_string),
+        });
+        self
+    }
+
+    /// The preserved directives and comments that followed the tag `name`, in
+    /// the order encountered.
+    pub fn directives_after<'a>(&'a self, name: &'a str) -> impl Iterator<Item = &'a str> {
+        self.directives
+            .iter()
+            .filter(move |d| d.after_tag.as_deref() == Some(name))
+            .map(|d| d.text.as_str())
+    }
+
+    /// The preserved directives and comments that came before every tag in the
+    /// record, in the order encountered.
+    pub fn leading_directives(&self) -> impl Iterator<Item = &str> {
+        self.directives
+            .iter()
+            .filter(|d| d.after_tag.is_none())
+            .map(|d| d.text.as_str())
+    }
+
     /// Generate a title string for the board
     pub fn title(&self) -> String {
         let mut parts = Vec::new();
@@ -296,5 +347,38 @@ mod tests {
             .with_vulnerability(Vulnerability::None);
 
         assert_eq!(board.title(), "Board 1 - North Deals - None Vul");
+    }
+}
+
+#[cfg(test)]
+mod directive_tests {
+    use super::*;
+
+    #[test]
+    fn directives_keep_their_place_in_the_record() {
+        let board = Board::new()
+            .with_directive("% Creator \"Bridge Composer\"", None)
+            .with_directive("% 065A62DCF61869AE5D72DF8D408A", Some("Board"))
+            .with_directive("; checked by hand", Some("Board"))
+            .with_directive("% page setup", Some("Deal"));
+
+        assert_eq!(
+            board.leading_directives().collect::<Vec<_>>(),
+            vec!["% Creator \"Bridge Composer\""]
+        );
+        assert_eq!(
+            board.directives_after("Board").collect::<Vec<_>>(),
+            vec!["% 065A62DCF61869AE5D72DF8D408A", "; checked by hand"]
+        );
+        assert_eq!(
+            board.directives_after("Deal").collect::<Vec<_>>(),
+            vec!["% page setup"]
+        );
+        assert!(board.directives_after("Result").next().is_none());
+    }
+
+    #[test]
+    fn a_board_carries_no_directives_by_default() {
+        assert!(Board::new().directives.is_empty());
     }
 }
