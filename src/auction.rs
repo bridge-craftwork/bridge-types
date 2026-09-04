@@ -65,7 +65,10 @@ impl Call {
             Call::Redouble => "XX".to_string(),
             Call::Continue => "+".to_string(),
             Call::Blank => "_____".to_string(),
-            Call::Bid { level, strain } => format!("{}{}", level, strain.to_char()),
+            // The standard defines the denomination as S, H, D, C or "NT"
+            // (3.4.14), and a call token uses that same definition (3.5.1), so
+            // notrump is written "NT" — `to_char` can only manage 'N'.
+            Call::Bid { level, strain } => format!("{}{}", level, strain.to_pbn()),
         }
     }
 
@@ -681,5 +684,19 @@ mod tests {
         // one starts claiming the auction was closed.
         assert_eq!(SectionEnd::default(), SectionEnd::Unmarked);
         assert_eq!(Auction::new(Direction::North).end, SectionEnd::Unmarked);
+    }
+
+    #[test]
+    fn a_notrump_bid_is_written_nt_not_n() {
+        // 3.4.14: the denomination is "S, H, D, C, or NT". `1N` is not a call
+        // token any other tool has to accept.
+        assert_eq!(Call::bid(1, Strain::NoTrump).to_pbn(), "1NT");
+        assert_eq!(Call::bid(3, Strain::NoTrump).to_pbn(), "3NT");
+        // The suit denominations are single letters and unchanged.
+        assert_eq!(Call::bid(1, Strain::Spades).to_pbn(), "1S");
+        assert_eq!(Call::bid(7, Strain::Clubs).to_pbn(), "7C");
+        // And both spellings still read back.
+        assert_eq!(Call::from_pbn("1NT"), Some(Call::bid(1, Strain::NoTrump)));
+        assert_eq!(Call::from_pbn("1N"), Some(Call::bid(1, Strain::NoTrump)));
     }
 }

@@ -82,6 +82,21 @@ impl Strain {
             Strain::NoTrump => 'N',
         }
     }
+
+    /// The denomination as PBN writes it: `S`, `H`, `D`, `C` or `NT`.
+    ///
+    /// Notrump is two characters, so [`to_char`](Self::to_char) cannot express
+    /// it and answers `'N'` instead. `Display` is no use either — it renders
+    /// suits as symbols for reading, not for writing to a file.
+    pub fn to_pbn(&self) -> &'static str {
+        match self {
+            Strain::Clubs => "C",
+            Strain::Diamonds => "D",
+            Strain::Hearts => "H",
+            Strain::Spades => "S",
+            Strain::NoTrump => "NT",
+        }
+    }
 }
 
 impl std::fmt::Display for Strain {
