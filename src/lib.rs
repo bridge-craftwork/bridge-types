@@ -14,6 +14,7 @@
 mod auction;
 mod board;
 mod card;
+mod dd_table;
 mod deal;
 mod direction;
 mod hand;
@@ -24,6 +25,7 @@ mod scoring;
 pub use auction::{AnnotatedCall, Auction, Call, FinalContract, SectionEnd};
 pub use board::{dealer_from_board_number, Board, Directive, Vulnerability};
 pub use card::{Card, Rank, Suit};
+pub use dd_table::{DdTable, DECLARERS, STRAINS};
 pub use deal::Deal;
 pub use direction::Direction;
 pub use hand::Hand;
