@@ -144,6 +144,45 @@ impl AnnotatedCall {
     }
 }
 
+/// How a section's token sequence ended.
+///
+/// The auction and play sections may each close with a marker token. The two
+/// markers are mutually exclusive: the standard forbids `*` where `+` is used.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum SectionEnd {
+    /// No marker. The section ran to its natural end — all passes, or thirteen
+    /// tricks — or simply stops where the data stops.
+    #[default]
+    Unmarked,
+    /// `*`: no further calls or cards will or can be given. The section is
+    /// closed, though not necessarily complete — a board may record only
+    /// `[Play "W"]` and a `*` to say the play is not on record.
+    Terminated,
+    /// `+`: the next call or card is to be made another time, as when a game is
+    /// saved for another program to continue.
+    Continued,
+}
+
+impl SectionEnd {
+    /// The marker this end is written as, or `None` when there is none.
+    pub fn to_pbn(self) -> Option<&'static str> {
+        match self {
+            SectionEnd::Unmarked => None,
+            SectionEnd::Terminated => Some("*"),
+            SectionEnd::Continued => Some("+"),
+        }
+    }
+
+    /// Read a marker token, or `None` if the token is not one.
+    pub fn from_pbn(token: &str) -> Option<Self> {
+        match token {
+            "*" => Some(SectionEnd::Terminated),
+            "+" => Some(SectionEnd::Continued),
+            _ => None,
+        }
+    }
+}
+
 /// A complete auction (bidding sequence)
 #[derive(Debug, Clone)]
 pub struct Auction {
@@ -153,6 +192,9 @@ pub struct Auction {
     pub calls: Vec<AnnotatedCall>,
     /// Notes referenced by =N= in PBN (e.g., [Note "1:Forcing"])
     pub notes: HashMap<u8, String>,
+    /// The marker the auction closed with, if any. Preserved so a section that
+    /// is nothing but `*` still says so when written back.
+    pub end: SectionEnd,
 }
 
 impl Auction {
@@ -162,6 +204,7 @@ impl Auction {
             dealer,
             calls: Vec::new(),
             notes: HashMap::new(),
+            end: SectionEnd::default(),
         }
     }
 
@@ -624,5 +667,19 @@ mod tests {
             auction.bidding_side(),
             Some((Direction::North, Direction::South))
         );
+    }
+
+    #[test]
+    fn section_end_markers_round_trip() {
+        assert_eq!(SectionEnd::from_pbn("*"), Some(SectionEnd::Terminated));
+        assert_eq!(SectionEnd::from_pbn("+"), Some(SectionEnd::Continued));
+        assert_eq!(SectionEnd::from_pbn("Pass"), None);
+        assert_eq!(SectionEnd::Terminated.to_pbn(), Some("*"));
+        assert_eq!(SectionEnd::Continued.to_pbn(), Some("+"));
+        assert_eq!(SectionEnd::Unmarked.to_pbn(), None);
+        // A section with no marker is the default, so nothing that does not set
+        // one starts claiming the auction was closed.
+        assert_eq!(SectionEnd::default(), SectionEnd::Unmarked);
+        assert_eq!(Auction::new(Direction::North).end, SectionEnd::Unmarked);
     }
 }
