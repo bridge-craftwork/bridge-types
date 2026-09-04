@@ -22,7 +22,7 @@ mod play;
 mod scoring;
 
 pub use auction::{AnnotatedCall, Auction, Call, FinalContract};
-pub use board::{dealer_from_board_number, Board, Vulnerability};
+pub use board::{dealer_from_board_number, Board, Directive, Vulnerability};
 pub use card::{Card, Rank, Suit};
 pub use deal::Deal;
 pub use direction::Direction;
