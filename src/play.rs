@@ -116,6 +116,9 @@ pub struct PlaySequence {
     pub trump: Option<Suit>,
     /// The tricks played
     pub tricks: Vec<Trick>,
+    /// The marker the play closed with, if any. Preserved so a section that is
+    /// nothing but `*` still says so when written back.
+    pub end: crate::auction::SectionEnd,
 }
 
 impl PlaySequence {
@@ -125,6 +128,7 @@ impl PlaySequence {
             opening_leader,
             trump,
             tricks: Vec::new(),
+            end: crate::auction::SectionEnd::default(),
         }
     }
 
