@@ -1,7 +1,7 @@
 //! The double-dummy result of a deal: how many tricks each declarer takes in
 //! each strain, with best play by both sides.
 
-use crate::{Direction, Strain};
+use crate::{Deal, Direction, Strain};
 use std::fmt;
 
 /// Every strain, in the order [`DdTable`] stores its columns.
@@ -54,13 +54,58 @@ pub struct DdTable {
 }
 
 impl DdTable {
-    /// A table with every cell zero.
+    /// The null table: every cell zero, which callers read as "not analysed".
     ///
-    /// Zero is a legitimate result — a declarer can take no tricks — so an
-    /// all-zero table is not distinguishable from an unsolved one. Callers that
-    /// need "not analysed" should hold an `Option<DdTable>`.
+    /// # Why an all-zero table is safe to give a meaning of its own
+    ///
+    /// Zero is a legitimate *cell* value — a declarer can take no tricks — but
+    /// an all-zero *table* is not something a solver can produce for a complete
+    /// deal.
+    ///
+    /// Over thirteen tricks all fifty-two cards are played, so the ace of trumps
+    /// is played to some trick. A trick containing a trump is won by the highest
+    /// trump played to it, and no trump outranks the ace, so the side holding
+    /// the ace of trumps wins at least one trick — whoever declares, whoever
+    /// leads, whatever the defence. That fixes eight of the twenty cells as
+    /// non-zero: in each of the four suit strains, both cells of the partnership
+    /// holding that suit's ace.
+    ///
+    /// # Suit strains only, and the restriction is load-bearing
+    ///
+    /// In notrump an ace can be discarded without ever winning a trick, so there
+    /// is no notrump form of the argument. The whole notrump column can be zero
+    /// on a legal deal:
+    ///
+    /// ```text
+    /// N ♠AKQJT98765432   S ♥AKQJT98765432   E ♦AKQJT98765432   W ♣AKQJT98765432
+    /// ```
+    ///
+    /// Whoever is on lead runs twenty-six cards while the other side can only
+    /// discard, so the defending side takes all thirteen tricks in each of the
+    /// four notrump cells. That deal is also the tight witness for the bound:
+    /// exactly eight non-zero cells and twelve zeros.
+    ///
+    /// None of this is asserted in code, and no wider invariant is checked here.
+    /// Promotion makes many other holdings winners too — `K Q` in one hand, `Q J
+    /// T` against `A K` — with no natural stopping point, and adjudicating
+    /// double-dummy numbers is `bridge-solver`'s work, not this crate's. The
+    /// argument is recorded so the next reader need not re-derive it.
+    pub const NULL: Self = Self {
+        tricks: [[0; 5]; 4],
+    };
+
+    /// A table with every cell zero, the same value as [`Self::NULL`].
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Whether every cell is zero — whether this is [`Self::NULL`].
+    ///
+    /// Structural only: it reports what the numbers are, not what they mean.
+    /// For "was this deal solved", which needs the deal in hand, use
+    /// [`is_solved`].
+    pub fn is_null(&self) -> bool {
+        *self == Self::NULL
     }
 
     /// Build a table by solving each cell.
@@ -111,6 +156,45 @@ impl DdTable {
     pub fn best_for_side(&self, declarer: Direction, strain: Strain) -> u8 {
         self.tricks(declarer, strain)
             .max(self.tricks(declarer.partner(), strain))
+    }
+}
+
+/// Whether `table` holds a solve of `deal`: `Some(true)` solved, `Some(false)`
+/// unsolved, `None` when the pair cannot answer the question.
+///
+/// A non-null table is a solve. A null table is the "not analysed" sentinel,
+/// but only for a complete deal — see [`DdTable::NULL`] for why an all-zero
+/// table is unreachable there. For an incomplete deal that argument does not
+/// apply, so a null table says nothing and the answer is `None`.
+///
+/// `Some(true)` means "not the unsolved sentinel", not "correctly solved". It
+/// says a solver wrote something here. It does not say the numbers are right,
+/// that they belong to this deal, or that the axes were not transposed.
+///
+/// ```
+/// use bridge_types::{is_solved, DdTable, Deal, Direction, Strain};
+///
+/// let deal = Deal::from_pbn(
+///     "N:K843.T542.J6.863 AQJ7.K.Q75.AT942 962.AJ7.KT82.J75 T5.Q9863.A943.KQ",
+/// )
+/// .expect("a complete deal");
+///
+/// assert_eq!(is_solved(&deal, &DdTable::NULL), Some(false));
+///
+/// let mut table = DdTable::NULL;
+/// table.set(Direction::East, Strain::Clubs, 9);
+/// assert_eq!(is_solved(&deal, &table), Some(true));
+///
+/// // Nothing to go on: no deal, and a null table.
+/// assert_eq!(is_solved(&Deal::new(), &DdTable::NULL), None);
+/// ```
+pub fn is_solved(deal: &Deal, table: &DdTable) -> Option<bool> {
+    if !table.is_null() {
+        Some(true)
+    } else if deal.is_complete() {
+        Some(false)
+    } else {
+        None
     }
 }
 
@@ -208,5 +292,53 @@ mod tests {
     fn a_new_table_is_all_zero() {
         let table = DdTable::new();
         assert!(table.cells().all(|(_, _, tricks)| tricks == 0));
+        assert_eq!(table, DdTable::NULL);
+        assert!(table.is_null());
+    }
+
+    /// Any one cell is enough to leave the sentinel behind, wherever it sits.
+    #[test]
+    fn one_non_zero_cell_anywhere_makes_a_table_non_null() {
+        for declarer in DECLARERS {
+            for strain in STRAINS {
+                let mut table = DdTable::NULL;
+                table.set(declarer, strain, 1);
+                assert!(!table.is_null(), "{declarer:?} {strain:?} left it null");
+            }
+        }
+    }
+
+    const COMPLETE_DEAL: &str =
+        "N:K843.T542.J6.863 AQJ7.K.Q75.AT942 962.AJ7.KT82.J75 T5.Q9863.A943.KQ";
+
+    fn complete_deal() -> Deal {
+        Deal::from_pbn(COMPLETE_DEAL).expect("a complete deal")
+    }
+
+    #[test]
+    fn a_null_table_on_a_complete_deal_is_unsolved() {
+        assert_eq!(is_solved(&complete_deal(), &DdTable::NULL), Some(false));
+    }
+
+    #[test]
+    fn any_non_null_table_is_solved_whatever_the_deal() {
+        let mut table = DdTable::NULL;
+        table.set(Direction::South, Strain::Spades, 10);
+
+        assert_eq!(is_solved(&complete_deal(), &table), Some(true));
+        // The deal is never consulted once the table is non-null.
+        assert_eq!(is_solved(&Deal::new(), &table), Some(true));
+    }
+
+    /// Without all fifty-two cards the trump-ace argument does not apply, so a
+    /// null table carries no meaning to read back.
+    #[test]
+    fn a_null_table_on_an_incomplete_deal_is_indeterminate() {
+        let mut deal = complete_deal();
+        deal.set_hand(Direction::West, crate::Hand::new());
+
+        assert!(!deal.is_complete());
+        assert_eq!(is_solved(&deal, &DdTable::NULL), None);
+        assert_eq!(is_solved(&Deal::new(), &DdTable::NULL), None);
     }
 }
