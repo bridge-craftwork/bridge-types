@@ -458,7 +458,19 @@ impl Hand {
 
     /// Parse hand from PBN notation (e.g., "AKQ.JT9.876.5432")
     /// Suits are in order: Spades.Hearts.Diamonds.Clubs
+    ///
+    /// "Not all 4 hands need to be given. A hand whose cards are not given, is
+    /// indicated by `-`" (PBN 2.1 §3.4.11), so a lone dash reads as an empty
+    /// hand. Rejecting it would fail the whole `[Deal]` rather than the one
+    /// hand — the standard's own example,
+    /// `W:KQT2.AT.J6542.85 - A8654.KQ5.T.QJT6 -`, would parse as no cards at
+    /// all, and two-hand teaching records are written exactly this way.
     pub fn from_pbn(s: &str) -> Option<Self> {
+        let s = s.trim();
+        if s == "-" {
+            return Some(Hand::new());
+        }
+
         let parts: Vec<&str> = s.split('.').collect();
         if parts.len() != 4 {
             return None;
@@ -584,5 +596,18 @@ mod tests {
         assert_eq!(hand.losers_in_suit(Suit::Diamonds), 2);
         assert_eq!(hand.losers_in_suit(Suit::Clubs), 2);
         assert_eq!(hand.losers(), 5);
+    }
+
+    #[test]
+    fn an_unknown_hand_is_a_dash() {
+        // Both halves matter: the hand is empty, and its neighbours in the deal
+        // still parse. Two-hand bidding records are written this way.
+        assert_eq!(Hand::from_pbn("-").unwrap().len(), 0);
+
+        let deal = crate::Deal::from_pbn("W:- K43.AQJ54.63.T95 - A5.KT83.K752.843").unwrap();
+        assert_eq!(deal.west.len(), 0);
+        assert_eq!(deal.east.len(), 0);
+        assert_eq!(deal.north.len(), 13);
+        assert_eq!(deal.south.len(), 13);
     }
 }
