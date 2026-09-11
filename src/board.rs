@@ -119,6 +119,15 @@ pub struct Board {
     pub play: Option<crate::PlaySequence>,
     pub result: Option<i8>,
     pub commentary: Vec<String>,
+    /// Where each [`Self::commentary`] block stood in its record: how many of
+    /// the record's tag pairs (see [`Self::tag_order`]) preceded it, so 0 for a
+    /// block before the first tag. Parallel to `commentary`; empty for a board
+    /// that was not read from PBN.
+    ///
+    /// Where a block stands is part of what it means. Bridge Composer prints a
+    /// block before `[Board]` above the diagram and one straight after `[Deal]`
+    /// beneath it, and one between the two not at all.
+    pub commentary_anchors: Vec<usize>,
     /// The board's double-dummy results, decoded.
     ///
     /// Held as a table rather than as the raw `DoubleDummyTricks` tag value,
@@ -145,6 +154,10 @@ pub struct Board {
     /// read/write cycle re-emits them in place rather than discarding them; see
     /// [`Directive`].
     pub directives: Vec<Directive>,
+    /// Names of the record's tag pairs in the order they appeared. With
+    /// [`Self::commentary_anchors`] it places each commentary block among them:
+    /// an anchor of `n` means the block followed `tag_order[n - 1]`.
+    pub tag_order: Vec<String>,
 }
 
 impl Board {
@@ -267,6 +280,13 @@ impl Board {
             .iter()
             .filter(|d| d.after_tag.is_none())
             .map(|d| d.text.as_str())
+    }
+
+    /// The tag the `i`th commentary block followed, or `None` when it came
+    /// before every tag or its position is not known.
+    pub fn commentary_anchor_tag(&self, i: usize) -> Option<&str> {
+        let after = self.commentary_anchors.get(i)?.checked_sub(1)?;
+        self.tag_order.get(after).map(String::as_str)
     }
 
     /// Generate a title string for the board
@@ -392,5 +412,19 @@ mod directive_tests {
     #[test]
     fn a_board_carries_no_directives_by_default() {
         assert!(Board::new().directives.is_empty());
+    }
+
+    #[test]
+    fn a_commentary_anchor_names_the_tag_before_it() {
+        let board = Board {
+            commentary: vec!["a".into(), "b".into(), "c".into()],
+            commentary_anchors: vec![0, 2, 9],
+            tag_order: vec!["Event".into(), "Board".into()],
+            ..Board::default()
+        };
+        assert_eq!(board.commentary_anchor_tag(0), None, "before every tag");
+        assert_eq!(board.commentary_anchor_tag(1), Some("Board"));
+        assert_eq!(board.commentary_anchor_tag(2), None, "past the known tags");
+        assert_eq!(board.commentary_anchor_tag(3), None, "no such block");
     }
 }
