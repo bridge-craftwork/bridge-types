@@ -158,6 +158,12 @@ pub struct Board {
     /// [`Self::commentary_anchors`] it places each commentary block among them:
     /// an anchor of `n` means the block followed `tag_order[n - 1]`.
     pub tag_order: Vec<String>,
+    /// The `[Deal]` tag as written, kept only when it did not parse into
+    /// [`Self::deal`]. Lesson files write `x` for a spot card whose rank does
+    /// not matter -- `N:Kx.Qxx.Qxxx.AJxx ...` -- which is no card a `Deal` can
+    /// hold. Without this the deal is simply gone: nothing to render, and a
+    /// write puts back an empty one.
+    pub unparsed_deal: Option<String>,
 }
 
 impl Board {
