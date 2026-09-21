@@ -48,6 +48,7 @@ pub const DECLARERS: [Direction; 4] = [
 /// assert_eq!(table.tricks(Direction::South, Strain::Hearts), 0);
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DdTable {
     /// Indexed `[declarer][strain]`, following [`DECLARERS`] and [`STRAINS`].
     tricks: [[u8; 5]; 4],

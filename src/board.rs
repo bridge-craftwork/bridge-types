@@ -5,6 +5,7 @@ use std::fmt;
 
 /// Represents vulnerability state for a board
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Vulnerability {
     #[default]
     None,
@@ -90,6 +91,7 @@ pub fn dealer_from_board_number(board: u32) -> Direction {
 /// leaves notes. Dropping them means a read/write cycle silently strips a
 /// user's page layout, so a board carries the ones from its own record.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Directive {
     /// The line exactly as written, including its leading `%` or `;`.
     pub text: String,
@@ -101,6 +103,7 @@ pub struct Directive {
 
 /// Represents a complete bridge board with metadata
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Board {
     pub number: Option<u32>,
     /// Raw `[Board]` identifier as written, e.g. "1" or "1-1". Preserves

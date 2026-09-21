@@ -6,5 +6,13 @@ license = "Unlicense"
 description = "Core bridge types: Card, Hand, Deal, Board, Contract, and evaluation methods"
 repository = "https://github.com/bridge-craftwork/bridge-types"
 
+[features]
+# Serialize/Deserialize for every public type. Off by default, so crates that
+# do not need it still build with no dependencies.
+serde = ["dep:serde"]
+
 [dependencies]
-# No external dependencies - pure Rust types
+serde = { version = "1", features = ["derive"], optional = true }
+
+[dev-dependencies]
+serde_json = "1"

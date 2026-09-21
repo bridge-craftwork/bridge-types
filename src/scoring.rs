@@ -2,6 +2,7 @@
 
 /// A parsed contract
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Contract {
     pub level: u8,
     pub strain: Strain,
@@ -11,6 +12,7 @@ pub struct Contract {
 
 /// The strain (denomination) of a contract
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Strain {
     Clubs,
     Diamonds,
@@ -113,6 +115,7 @@ impl std::fmt::Display for Strain {
 
 /// Doubling state
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Doubled {
     #[default]
     None,

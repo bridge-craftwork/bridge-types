@@ -4,6 +4,7 @@ use std::fmt;
 
 /// Represents the four positions at a bridge table
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Direction {
     North,
     East,
