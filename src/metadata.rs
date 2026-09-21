@@ -5,6 +5,7 @@ use std::fmt;
 
 /// Player names for each seat at the table
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PlayerNames {
     pub north: Option<String>,
     pub east: Option<String>,
@@ -59,6 +60,7 @@ impl PlayerNames {
 
 /// Scoring method for a bridge game
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ScoringMethod {
     /// Matchpoints (pairs game)
     #[default]
@@ -136,6 +138,7 @@ impl fmt::Display for ScoringMethod {
 
 /// Room in a teams match
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Room {
     Open,
     Closed,
@@ -171,6 +174,7 @@ impl fmt::Display for Room {
 
 /// Result of a played board (tricks taken by declarer)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BoardResult {
     /// Tricks taken by declarer (0-13)
     pub tricks: u8,

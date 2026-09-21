@@ -6,6 +6,7 @@ use crate::{Card, Direction, Hand};
 
 /// Represents a complete bridge deal (all four hands)
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Deal {
     pub north: Hand,
     pub east: Hand,

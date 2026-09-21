@@ -2,6 +2,7 @@
 
 /// Represents the four suits in bridge
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(u8)]
 pub enum Suit {
     Clubs = 0,
@@ -85,6 +86,7 @@ impl std::fmt::Display for Suit {
 
 /// Represents card ranks from 2 to Ace
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(u8)]
 pub enum Rank {
     Two = 2,
@@ -200,6 +202,7 @@ impl std::fmt::Display for Rank {
 
 /// Represents a single playing card
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Card {
     pub suit: Suit,
     pub rank: Rank,

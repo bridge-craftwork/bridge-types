@@ -4,6 +4,7 @@ use crate::{Card, Rank, Suit};
 
 /// Represents a single player's hand of cards
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Hand {
     cards: Vec<Card>,
 }

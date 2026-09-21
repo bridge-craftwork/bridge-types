@@ -4,6 +4,7 @@ use crate::{Card, Direction, Suit};
 
 /// A single trick (4 cards played, one from each direction)
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Trick {
     /// The player who led to this trick
     pub leader: Direction,
@@ -109,6 +110,7 @@ impl Trick {
 
 /// A complete play sequence (up to 13 tricks)
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PlaySequence {
     /// The opening leader
     pub opening_leader: Direction,

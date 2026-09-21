@@ -10,6 +10,9 @@
 //! - `Auction`, `Call` - bidding sequence types
 //! - `Trick`, `PlaySequence` - card play tracking
 //! - `PlayerNames`, `ScoringMethod`, `Room` - metadata types
+//!
+//! Enable the `serde` feature for `Serialize`/`Deserialize` on every public
+//! type. Without it the crate has no dependencies.
 
 mod auction;
 mod board;

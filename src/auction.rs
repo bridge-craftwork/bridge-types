@@ -5,8 +5,20 @@ use std::fmt;
 
 use crate::{Direction, Strain};
 
+/// Rank of a strain in bidding order: clubs lowest, notrump highest.
+fn strain_rank(strain: Strain) -> usize {
+    match strain {
+        Strain::Clubs => 0,
+        Strain::Diamonds => 1,
+        Strain::Hearts => 2,
+        Strain::Spades => 3,
+        Strain::NoTrump => 4,
+    }
+}
+
 /// A single call in an auction
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Call {
     Pass,
     Bid {
@@ -118,6 +130,7 @@ impl fmt::Display for Call {
 
 /// A call with an optional annotation (alert, explanation)
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct AnnotatedCall {
     pub call: Call,
     /// Optional annotation text (alert, explanation)
@@ -152,6 +165,7 @@ impl AnnotatedCall {
 /// The auction and play sections may each close with a marker token. The two
 /// markers are mutually exclusive: the standard forbids `*` where `+` is used.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum SectionEnd {
     /// No marker. The section ran to its natural end — all passes, or thirteen
     /// tricks — or simply stops where the data stops.
@@ -188,6 +202,7 @@ impl SectionEnd {
 
 /// A complete auction (bidding sequence)
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Auction {
     /// The dealer (first to call)
     pub dealer: Direction,
@@ -253,16 +268,6 @@ impl Auction {
     /// the opening leader (declarer's LHO), so this distinction matters to
     /// anything that goes on to play or solve the deal.
     pub fn final_contract(&self) -> Option<FinalContract> {
-        /// Index a strain without requiring `Hash`/`Ord` on it.
-        fn strain_index(strain: Strain) -> usize {
-            match strain {
-                Strain::Clubs => 0,
-                Strain::Diamonds => 1,
-                Strain::Hearts => 2,
-                Strain::Spades => 3,
-                Strain::NoTrump => 4,
-            }
-        }
         fn is_ns(seat: Direction) -> bool {
             matches!(seat, Direction::North | Direction::South)
         }
@@ -278,7 +283,7 @@ impl Auction {
             match &annotated.call {
                 Call::Bid { level, strain } => {
                     let side = usize::from(is_ns(current_player));
-                    first_named[side][strain_index(*strain)].get_or_insert(current_player);
+                    first_named[side][strain_rank(*strain)].get_or_insert(current_player);
                     last_bid = Some((*level, *strain, current_player));
                     doubled = false;
                     redoubled = false;
@@ -304,7 +309,7 @@ impl Auction {
             // The final bidder's own side named the strain at least once (that
             // bid), so the lookup always hits; fall back to the bidder rather
             // than discard an otherwise valid contract.
-            declarer: first_named[usize::from(is_ns(bidder))][strain_index(strain)]
+            declarer: first_named[usize::from(is_ns(bidder))][strain_rank(strain)]
                 .unwrap_or(bidder),
         })
     }
@@ -344,10 +349,100 @@ impl Auction {
     pub fn is_empty(&self) -> bool {
         self.calls.is_empty()
     }
+
+    /// The seat whose turn it is to call.
+    pub fn next_caller(&self) -> Direction {
+        self.caller(self.calls.len())
+    }
+
+    /// The last bid made and who made it, ignoring passes, doubles and
+    /// redoubles.
+    pub fn last_bid(&self) -> Option<(u8, Strain, Direction)> {
+        self.calls
+            .iter()
+            .enumerate()
+            .rev()
+            .find_map(|(i, ac)| match ac.call {
+                Call::Bid { level, strain } => Some((level, strain, self.caller(i))),
+                _ => None,
+            })
+    }
+
+    /// The last bid, double or redouble, who made it, and how many calls have
+    /// followed it. `Continue` and `Blank` markers count as passes here: they
+    /// hold a seat but say nothing, so the legality methods below are only
+    /// meaningful for an auction without them.
+    fn last_action(&self) -> (Option<(&Call, Direction)>, usize) {
+        for (i, ac) in self.calls.iter().enumerate().rev() {
+            if matches!(ac.call, Call::Bid { .. } | Call::Double | Call::Redouble) {
+                return (Some((&ac.call, self.caller(i))), self.calls.len() - i - 1);
+            }
+        }
+        (None, self.calls.len())
+    }
+
+    /// Returns true when the auction is over: four passes to start, or three
+    /// passes after a bid, double or redouble.
+    pub fn is_complete(&self) -> bool {
+        match self.last_action() {
+            (None, passes) => passes >= 4,
+            (Some(_), passes) => passes >= 3,
+        }
+    }
+
+    /// Returns true if `call` may be made next, by the laws of bridge: a bid
+    /// must outrank the last bid; a double needs an opponent's bid as the last
+    /// action; a redouble needs an opponent's double as the last action.
+    /// Nothing is legal once the auction is complete, and `Continue` and
+    /// `Blank` are markers, not calls, so they are never legal.
+    pub fn is_legal(&self, call: &Call) -> bool {
+        if self.is_complete() {
+            return false;
+        }
+        let me = self.next_caller();
+        let opponent = |seat: Direction| seat != me && seat != me.partner();
+        match call {
+            Call::Pass => true,
+            Call::Bid { level, strain } => {
+                (1..=7).contains(level)
+                    && self.last_bid().is_none_or(|(l, s, _)| {
+                        (*level, strain_rank(*strain)) > (l, strain_rank(s))
+                    })
+            }
+            Call::Double => matches!(
+                self.last_action().0,
+                Some((Call::Bid { .. }, by)) if opponent(by)
+            ),
+            Call::Redouble => matches!(
+                self.last_action().0,
+                Some((Call::Double, by)) if opponent(by)
+            ),
+            Call::Continue | Call::Blank => false,
+        }
+    }
+
+    /// Every call that may be made next, in order: pass, double, redouble,
+    /// then bids from lowest to highest. Empty once the auction is complete.
+    pub fn legal_calls(&self) -> Vec<Call> {
+        const STRAINS: [Strain; 5] = [
+            Strain::Clubs,
+            Strain::Diamonds,
+            Strain::Hearts,
+            Strain::Spades,
+            Strain::NoTrump,
+        ];
+        let bids = (1..=7u8).flat_map(|level| STRAINS.map(|strain| Call::Bid { level, strain }));
+        [Call::Pass, Call::Double, Call::Redouble]
+            .into_iter()
+            .chain(bids)
+            .filter(|call| self.is_legal(call))
+            .collect()
+    }
 }
 
 /// The final contract resulting from an auction
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FinalContract {
     pub level: u8,
     pub strain: Strain,
@@ -698,5 +793,71 @@ mod tests {
         // And both spellings still read back.
         assert_eq!(Call::from_pbn("1NT"), Some(Call::bid(1, Strain::NoTrump)));
         assert_eq!(Call::from_pbn("1N"), Some(Call::bid(1, Strain::NoTrump)));
+    }
+
+    #[test]
+    fn bids_must_outrank_the_last_bid() {
+        let auction = auction_from_pbn(Direction::North, "1S Pass");
+        assert_eq!(auction.next_caller(), Direction::South);
+        assert!(auction.is_legal(&Call::bid(1, Strain::NoTrump)));
+        assert!(auction.is_legal(&Call::bid(2, Strain::Clubs)));
+        assert!(!auction.is_legal(&Call::bid(1, Strain::Spades)));
+        assert!(!auction.is_legal(&Call::bid(1, Strain::Hearts)));
+        assert!(!auction.is_legal(&Call::bid(8, Strain::Clubs)));
+        assert_eq!(
+            auction.last_bid(),
+            Some((1, Strain::Spades, Direction::North))
+        );
+    }
+
+    #[test]
+    fn double_only_an_opponents_bid() {
+        // East may double North's 1S; after 1S Pass, South (partner) may not.
+        let auction = auction_from_pbn(Direction::North, "1S");
+        assert!(auction.is_legal(&Call::Double));
+        assert!(!auction.is_legal(&Call::Redouble));
+        let auction = auction_from_pbn(Direction::North, "1S Pass");
+        assert!(!auction.is_legal(&Call::Double));
+        // West, in the pass-out seat after 1S Pass Pass, may double.
+        let auction = auction_from_pbn(Direction::North, "1S Pass Pass");
+        assert!(auction.is_legal(&Call::Double));
+        // Once doubled, the doubled side may redouble but not double again.
+        let auction = auction_from_pbn(Direction::North, "1S X");
+        assert!(auction.is_legal(&Call::Redouble));
+        assert!(!auction.is_legal(&Call::Double));
+        let auction = auction_from_pbn(Direction::North, "1S X Pass Pass");
+        assert!(auction.is_legal(&Call::Redouble));
+        // The doubler's partner may not redouble their own side's double.
+        let auction = auction_from_pbn(Direction::North, "1S X Pass");
+        assert!(!auction.is_legal(&Call::Redouble));
+        // After a redouble, no further double or redouble.
+        let auction = auction_from_pbn(Direction::North, "1S X XX");
+        assert!(!auction.is_legal(&Call::Double));
+        assert!(!auction.is_legal(&Call::Redouble));
+    }
+
+    #[test]
+    fn completion() {
+        assert!(!auction_from_pbn(Direction::North, "Pass Pass Pass").is_complete());
+        assert!(auction_from_pbn(Direction::North, "Pass Pass Pass Pass").is_complete());
+        assert!(!auction_from_pbn(Direction::North, "Pass 1C Pass Pass").is_complete());
+        assert!(auction_from_pbn(Direction::North, "Pass 1C Pass Pass Pass").is_complete());
+        assert!(auction_from_pbn(Direction::North, "1C X Pass Pass Pass").is_complete());
+        let done = auction_from_pbn(Direction::North, "1C Pass Pass Pass");
+        assert!(!done.is_legal(&Call::Pass));
+        assert!(done.legal_calls().is_empty());
+    }
+
+    #[test]
+    fn legal_calls_lists_every_option() {
+        // Opening: pass and all 35 bids.
+        let opening = Auction::new(Direction::North);
+        assert_eq!(opening.legal_calls().len(), 36);
+        // Over 7NT by an opponent: pass or double.
+        let auction = auction_from_pbn(Direction::North, "7NT");
+        assert_eq!(auction.legal_calls(), vec![Call::Pass, Call::Double]);
+        // Markers are never legal calls.
+        assert!(!opening.is_legal(&Call::Continue));
+        assert!(!opening.is_legal(&Call::Blank));
     }
 }
