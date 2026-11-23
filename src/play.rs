@@ -79,8 +79,8 @@ impl Trick {
         let mut winning_pos = 0;
         let mut winning_card = self.cards[0].unwrap();
 
-        for i in 1..4 {
-            let card = self.cards[i].unwrap();
+        for (i, slot) in self.cards.iter().enumerate().skip(1) {
+            let card = slot.unwrap();
             let dominated = if let Some(trump_suit) = trump {
                 // Trump beats non-trump
                 if card.suit == trump_suit && winning_card.suit != trump_suit {
