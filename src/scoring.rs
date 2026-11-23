@@ -161,11 +161,22 @@ impl Contract {
             return None;
         };
 
-        let strain = Strain::from_str(strain_start)?;
+        // PBN writes the double onto the strain, `[Contract "5SX"]` (2.1
+        // §3.4.11), as well as the spaced `5 S X` this also reads
+        let (strain_text, suffix) = if let Some(rest) = strain_start.strip_suffix("XX") {
+            (rest, Doubled::Redoubled)
+        } else if let Some(rest) = strain_start.strip_suffix('X') {
+            (rest, Doubled::Doubled)
+        } else {
+            (strain_start, Doubled::None)
+        };
+        let strain = Strain::from_str(strain_text)?;
 
-        let doubled = if parts.iter().any(|p| *p == "XX" || *p == "REDOUBLED") {
+        let doubled = if suffix == Doubled::Redoubled
+            || parts.iter().any(|p| *p == "XX" || *p == "REDOUBLED")
+        {
             Doubled::Redoubled
-        } else if parts.iter().any(|p| *p == "X" || *p == "DOUBLED") {
+        } else if suffix == Doubled::Doubled || parts.iter().any(|p| *p == "X" || *p == "DOUBLED") {
             Doubled::Doubled
         } else {
             Doubled::None
@@ -384,6 +395,24 @@ mod tests {
         assert_eq!(c.level, 6);
         assert_eq!(c.strain, Strain::Clubs);
         assert_eq!(c.doubled, Doubled::Redoubled);
+    }
+
+    #[test]
+    fn parses_pbn_contracts_with_the_double_on_the_strain() {
+        for (text, level, strain, doubled) in [
+            ("5SX", 5, Strain::Spades, Doubled::Doubled),
+            ("6CXX", 6, Strain::Clubs, Doubled::Redoubled),
+            ("3NTX", 3, Strain::NoTrump, Doubled::Doubled),
+            ("3N", 3, Strain::NoTrump, Doubled::None),
+            ("4H", 4, Strain::Hearts, Doubled::None),
+        ] {
+            let c = Contract::parse(text).unwrap_or_else(|| panic!("{text}"));
+            assert_eq!(
+                (c.level, c.strain, c.doubled),
+                (level, strain, doubled),
+                "{text}"
+            );
+        }
     }
 
     #[test]
