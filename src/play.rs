@@ -292,3 +292,66 @@ mod tests {
         );
     }
 }
+
+/// The double-dummy cost of each card one player could have played at one
+/// turn: the `[DoubleDummyPlay]` section's entry for that turn.
+///
+/// A cost is in tricks, for the side to play, against that side's best
+/// choice at this turn: `0` for every card that keeps the best result, `1`
+/// for one that gives a trick away, and so on. Only legal cards are listed,
+/// spades down to clubs and high to low within a suit; `None` is a card the
+/// analysis did not solve.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct CardCosts {
+    /// Each legal card and its cost, if solved.
+    pub cards: Vec<(Card, Option<u8>)>,
+}
+
+impl CardCosts {
+    /// The cost of playing `card` here: `None` when it was not legal or not
+    /// solved.
+    pub fn cost_of(&self, card: Card) -> Option<u8> {
+        self.cards
+            .iter()
+            .find(|(c, _)| *c == card)
+            .and_then(|(_, cost)| *cost)
+    }
+}
+
+/// One trick of a [`DoubleDummyPlay`], laid out like [`Trick`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct TrickCosts {
+    /// The player who led to this trick.
+    pub leader: Direction,
+    /// Each turn's costs, leader first then clockwise, as in
+    /// [`Trick::cards`]. `None` is a turn the analysis does not cover.
+    pub turns: [Option<CardCosts>; 4],
+}
+
+/// Card-by-card double-dummy analysis of a board's play: for every card
+/// played, the cost of each card that could have been played instead.
+///
+/// Parallel to the board's [`PlaySequence`]: trick `i` here analyses trick
+/// `i` there. `bridge-encodings` owns the PBN encoding, the
+/// `[DoubleDummyPlay]` section, and its specification.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct DoubleDummyPlay {
+    /// The opening leader, as in the play it analyses.
+    pub opening_leader: Direction,
+    /// One entry per trick of the play.
+    pub tricks: Vec<TrickCosts>,
+    /// The marker the section closed with.
+    pub end: crate::auction::SectionEnd,
+}
+
+impl DoubleDummyPlay {
+    /// The costs at the turn that played trick `trick`'s card from `seat`.
+    pub fn turn(&self, trick: usize, seat: Direction) -> Option<&CardCosts> {
+        let t = self.tricks.get(trick)?;
+        let slot = (seat.to_index() + 4 - t.leader.to_index()) % 4;
+        t.turns[slot].as_ref()
+    }
+}

@@ -9,6 +9,7 @@
 //! - `Contract`, `Strain` - contract and scoring types
 //! - `Auction`, `Call` - bidding sequence types
 //! - `Trick`, `PlaySequence` - card play tracking
+//! - `DoubleDummyPlay` - card-by-card double-dummy costs of a play
 //! - `PlayerNames`, `ScoringMethod`, `Room` - metadata types
 //!
 //! Enable the `serde` feature for `Serialize`/`Deserialize` on every public
@@ -33,5 +34,5 @@ pub use deal::Deal;
 pub use direction::Direction;
 pub use hand::Hand;
 pub use metadata::{BoardResult, PlayerNames, Room, ScoringMethod};
-pub use play::{PlaySequence, Trick};
+pub use play::{CardCosts, DoubleDummyPlay, PlaySequence, Trick, TrickCosts};
 pub use scoring::{calculate_matchpoints, Contract, Doubled, Strain};
