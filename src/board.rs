@@ -137,6 +137,9 @@ pub struct Board {
     /// because every consumer wanted the numbers and each was decoding the
     /// twenty-character string itself. `bridge-encodings` owns that codec.
     pub double_dummy_tricks: Option<DdTable>,
+    /// Card-by-card double-dummy analysis of [`Self::play`], from the
+    /// `DoubleDummyPlay` section. `bridge-encodings` owns the codec.
+    pub double_dummy_play: Option<crate::DoubleDummyPlay>,
     /// The `OptimumScore` tag as written, e.g. `"NS 420"`.
     ///
     /// Still a string, unlike [`Self::double_dummy_tricks`]: the types that
